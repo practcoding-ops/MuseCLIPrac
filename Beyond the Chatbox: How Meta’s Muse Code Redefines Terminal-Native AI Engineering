@@ -1,1 +1,127 @@
 
+1. Launching Parallel Worktrees (Subagent Fanout)
+Run up to 8 background agents simultaneously, each working inside its own isolated Git worktree so your active working directory stays completely untouched.
+
+
+
+# Run multi-subagent refactor in isolated worktrees
+muse "Refactor DB layer from Postgres to Prisma" \
+  --parallel 4 \
+  --isolation worktree \
+  --auto-verify
+
+
+How it works:
+
+--parallel 4 spawns 4 background workers.
+
+
+--isolation worktree creates temporary Git worktrees under .muse/worktrees/.
+
+
+--auto-verify instructs the isolated Verifier Agent to run your unit tests in each worktree before signaling completion.
+
+
+2. Stress-Testing an Implementation Plan (/grill)
+Before letting the CLI edit any files, trigger adversarial plan review directly within an interactive session to catch edge cases early.
+
+
+
+$ muse
+> Create an in-memory rate limiter middleware for Express.
+# [Muse generates an initial plan]
+
+> /grill
+
+
+How it works:
+
+Entering /grill shifts the CLI from execution mode into adversarial review mode. The agent interrogates its own plan:
+
+Plaintext
+[Grill Output]
+⚠️ Issue 1: In-memory counters fail in multi-instance load-balanced environments.
+⚠️ Issue 2: High traffic bursts will cause unbounded memory usage.
+💡 Recommendation: Switch to Redis sliding window algorithm. Update plan? (y/n)
+
+
+3. Setting Up Enterprise OS Sandboxing (muse config)
+Restrict terminal permissions and command execution boundaries to prevent unsafe shell executions on developer machines.
+
+Ini, TOML
+# .muse/config.toml
+[sandbox]
+mode = "strict"
+allow_network = false
+allowed_paths = ["./src", "./tests"]
+
+[policy]
+enforce_plane = "enterprise_default"
+require_approval = ["npm install", "docker", "rm -rf"]
+
+
+Validate configuration via CLI:
+
+
+
+# Verify policy compliance against central security requirements
+muse config validate --plane enterprise_default
+
+
+How it works:
+
+If a subagent attempts an unapproved action (like making an outbound HTTP call or modifying files outside ./src), the execution boundary intercepts the call and requires manual operator confirmation.
+
+4. Configuring Team-Wide vs. Private Memory (AGENTS.md)
+Set up repository-wide architectural rules for the entire team while keeping local user settings private.
+
+Repository Rulefile (AGENTS.md - Committed to Git):
+
+Markdown
+# AGENTS.md - Repository Standards
+
+## Database Operations
+- Never use raw SQL queries; always use Prisma ORM methods.
+- All new migrations must include down-migrations in `/prisma/migrations`.
+
+## Testing Rules
+- Every API endpoint addition requires an integration test in `/tests/api`.
+
+
+Private Local Memory (.agents/memory/local.json - Git ignored):
+
+JSON
+{
+  "preferred_editor": "cursor",
+  "local_test_flag": "--reporter=nyan",
+  "custom_sandbox_timeout": 30
+}
+
+
+How it works:
+
+When any developer clones the repository and runs muse, the CLI automatically parses AGENTS.md into the Skill Recommendation & Observer Agents. This ensures AI-generated code follows team conventions automatically.
+
+5. Inspecting Append-Only Session Replays (muse log)
+Audit or replay session tool calls, file diffs, and executed shell commands step-by-step from the local event stream.
+
+# View session history for the active branch
+muse log --last 10 --format pretty
+
+# Inspect exact tool calls made by a background subagent
+muse log --subagent-id subagent_3a8b --diff
+
+
+Sample Output:
+
+Plaintext
+[EVENT #104] Subagent-3a8b -> Executed Tool: 
+Command: `npm test -- tests/auth.test.ts`
+Status: PASSED (Exit code: 0)
+Diff Applied: +24 lines, -8 lines in src/auth/jwt.ts
+
+
+How it works:
+
+Because sessions are recorded in an append-only event stream, if a session crashes or loses connection mid-step, running muse resume recovers the exact execution state without duplicating work.
+
